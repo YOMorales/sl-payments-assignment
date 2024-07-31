@@ -42,7 +42,7 @@ class GetSubscriptionsReport extends Command
             $subscriptions = $subscriptions->toArray()['data'];
             $subscriptionsByProduct = collect($subscriptions)->groupBy('plan.product.name');
 
-            $tableData = [];
+            $allTablesData = [];
             $rowTemplate = [
                 'Customer Email' => '',
                 'Product Name' => '',
@@ -64,9 +64,9 @@ class GetSubscriptionsReport extends Command
             // TODO: keep using collections
             foreach ($subscriptionsByProduct as $productName => $subscriptionGroup) {
                 foreach ($subscriptionGroup as $key => $subscription) {
-                    $tableData[$productName][$key] = $rowTemplate;
-                    $tableData[$productName][$key]['Customer Email'] = $subscription['customer']['email'];
-                    $tableData[$productName][$key]['Product Name'] = $productName;
+                    $allTablesData[$productName][$key] = $rowTemplate;
+                    $allTablesData[$productName][$key]['Customer Email'] = $subscription['customer']['email'];
+                    $allTablesData[$productName][$key]['Product Name'] = $productName;
 
                     // get invoices for this subscription
                     $subscriptionId = $subscription['id'];
@@ -99,20 +99,20 @@ class GetSubscriptionsReport extends Command
                             default => $invoice['amount_paid'],
                         };
 
-                        $tableData[$productName][$key]["endOfMonth " . $invoiceIndex+1] = bcdiv($amountInUSD, 100, 2);
+                        $allTablesData[$productName][$key]["endOfMonth " . $invoiceIndex+1] = bcdiv($amountInUSD, 100, 2);
                         $subscriptionLifeTimeValue = bcadd($subscriptionLifeTimeValue, $amountInUSD, 2);
                     }
 
-                    $tableData[$productName][$key]['Life Time Value'] = bcdiv($subscriptionLifeTimeValue, 100, 2);
+                    $allTablesData[$productName][$key]['Life Time Value'] = bcdiv($subscriptionLifeTimeValue, 100, 2);
                 }
 
-                // add one last row to $tableData[$productName] that sums up all the values in endOfMonth columns
+                // add one last row to $allTablesData[$productName] that sums up all the values in endOfMonth columns
                 $totalRevenueRow = $rowTemplate;
                 $totalRevenueRow['Customer Email'] = 'Total';
                 $totalRevenueRow = array_merge(
                     $totalRevenueRow,
                     array_reduce(
-                        $tableData[$productName],
+                        $allTablesData[$productName],
                         function ($carry, $item) {
                             foreach ($item as $key => $value) {
                                 if ($key === 'Customer Email' || $key === 'Product Name') {
@@ -128,7 +128,7 @@ class GetSubscriptionsReport extends Command
                     )
                 );
 
-                $tableData[$productName][] = $totalRevenueRow;
+                $allTablesData[$productName][] = $totalRevenueRow;
             }
 
             $tableHeaders = [
@@ -150,10 +150,14 @@ class GetSubscriptionsReport extends Command
                 'Life Time Value',
             ];
 
-            $this->table(
-                $tableHeaders,
-                $tableData['Crossclip']
-            );
+            foreach ($allTablesData as $tableData) {
+                $this->table(
+                    $tableHeaders,
+                    $tableData
+                );
+                // adds a blank line between tables
+                $this->info("\r\n");
+            }
 
             return Command::SUCCESS;
         } catch (Throwable $th) {
