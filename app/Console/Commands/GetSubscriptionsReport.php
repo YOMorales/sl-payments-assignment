@@ -28,7 +28,13 @@ class GetSubscriptionsReport extends Command
     public function handle()
     {
         try {
-            //$stripeClient = new StripeClient(config('stripe.secret_key'));
+            $stripeClient = new StripeClient(config('stripe.secret_key'));
+
+            // Stripe normally will not return subscriptions attached to a test clock, so we specify it here
+            $subscriptions = $stripeClient->subscriptions->all([
+                'test_clock' => config('stripe.test_clock'),
+                'expand' => ['data.customer', 'data.plan.product']
+            ]);
 
             $tableHeaders = [
                 'Customer Email',
