@@ -30,7 +30,8 @@ class CreateStripeTestClock extends Command
     {
         /*
         YOM: Test clocks can be created in other ways, such as in the Stripe Dashboard. But I will be using commands to do
-        all the work, mostly to showcase my expertise with Laravel and other libraries. Also, I like to use commands for
+        all the work, mostly to showcase my expertise with Laravel and other libraries, plus this can be rerun as many
+        times as needed (like when removing all test clocks and recreating them). Also, I like to use commands for
         these sort of tasks because they offer other possibilities such as scheduling them, queueing them, and more.
         Finally, I want to make use of custom helpers functions that I saw, like writeNewEnvironmentFileWithClock().
         */

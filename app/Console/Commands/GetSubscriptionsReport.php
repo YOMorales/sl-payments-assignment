@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Util\ExchangeRate;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Stripe\StripeClient;
 use Throwable;
@@ -30,6 +31,20 @@ class GetSubscriptionsReport extends Command
     {
         try {
             $stripeClient = new StripeClient(config('stripe.secret_key'));
+
+            for ($months = 2; $months <= 12; $months += 2) {
+                $this->info("Advancing clock by $months months...");
+                $twoMonthsIncrement = Carbon::now()->startOfDay()->addMonthsNoOverflow($months)->timestamp;
+                $clock = $stripeClient->testHelpers->testClocks->advance(config('stripe.test_clock'), ['frozen_time' => $twoMonthsIncrement]);
+                $clockStatus = $clock->status;
+
+                // YOM: I know there are webhooks for this, but I will be pinging
+                while ($clockStatus !== 'ready') {
+                    $this->info('Waiting for clock to be ready...');
+                    sleep(2);
+                    $clockStatus = $stripeClient->testHelpers->testClocks->retrieve(config('stripe.test_clock'))->status;
+                }
+            }
 
             // Stripe normally will not return subscriptions attached to a test clock, so we specify it here
             $subscriptions = $stripeClient->subscriptions->all([
