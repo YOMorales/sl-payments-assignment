@@ -32,16 +32,17 @@ class GetSubscriptionsReport extends Command
         try {
             $stripeClient = new StripeClient(config('stripe.secret_key'));
 
-            for ($months = 2; $months <= 12; $months += 2) {
-                $this->info("Advancing clock by $months months...");
-                $twoMonthsIncrement = Carbon::now()->startOfDay()->addMonthsNoOverflow($months)->timestamp;
-                $clock = $stripeClient->testHelpers->testClocks->advance(config('stripe.test_clock'), ['frozen_time' => $twoMonthsIncrement]);
+            for ($months = 1; $months <= 12; $months++) {
+                $oneMonthIncrement = Carbon::now()->startOfDay()->addMonthsNoOverflow($months);
+                $this->info("Advancing clock to..." . $oneMonthIncrement->format('Y-m-d'));
+
+                $clock = $stripeClient->testHelpers->testClocks->advance(config('stripe.test_clock'), ['frozen_time' => $oneMonthIncrement->timestamp]);
                 $clockStatus = $clock->status;
 
                 // YOM: I know there are webhooks for this, but I will be pinging
                 while ($clockStatus !== 'ready') {
                     $this->info('Waiting for clock to be ready...');
-                    sleep(2);
+                    sleep(4);
                     $clockStatus = $stripeClient->testHelpers->testClocks->retrieve(config('stripe.test_clock'))->status;
                 }
             }
