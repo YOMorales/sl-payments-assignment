@@ -3,7 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Util\ExchangeRate;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Stripe\StripeClient;
 use Throwable;
@@ -44,14 +43,30 @@ class GetSubscriptionsReport extends Command
             $subscriptionsByProduct = collect($subscriptions)->groupBy('plan.product.name');
 
             $tableData = [];
+            $rowTemplate = [
+                'Customer Email' => '',
+                'Product Name' => '',
+                'endOfMonth 1' => null,
+                'endOfMonth 2' => null,
+                'endOfMonth 3' => null,
+                'endOfMonth 4' => null,
+                'endOfMonth 5' => null,
+                'endOfMonth 6' => null,
+                'endOfMonth 7' => null,
+                'endOfMonth 8' => null,
+                'endOfMonth 9' => null,
+                'endOfMonth 10' => null,
+                'endOfMonth 11' => null,
+                'endOfMonth 12' => null,
+                'Life Time Value' => null,
+            ];
 
             // TODO: keep using collections
             foreach ($subscriptionsByProduct as $productName => $subscriptionGroup) {
                 foreach ($subscriptionGroup as $key => $subscription) {
-                    $tableData[$productName][$key] = [
-                        'Customer Email' => $subscription['customer']['email'],
-                        'Product Name' => $productName,
-                    ];
+                    $tableData[$productName][$key] = $rowTemplate;
+                    $tableData[$productName][$key]['Customer Email'] = $subscription['customer']['email'];
+                    $tableData[$productName][$key]['Product Name'] = $productName;
 
                     // get invoices for this subscription
                     $subscriptionId = $subscription['id'];
@@ -70,7 +85,7 @@ class GetSubscriptionsReport extends Command
                     $invoices = array_slice($invoices, 0, 12);
 
 
-                    $lifeTimeValue = 0;
+                    $subscriptionLifeTimeValue = 0;
 
                     foreach ($invoices as $invoiceIndex => $invoice) {
                         /*
@@ -85,28 +100,35 @@ class GetSubscriptionsReport extends Command
                         };
 
                         $tableData[$productName][$key]["endOfMonth " . $invoiceIndex+1] = bcdiv($amountInUSD, 100, 2);
-                        $lifeTimeValue = bcadd($lifeTimeValue, $amountInUSD, 2);
+                        $subscriptionLifeTimeValue = bcadd($subscriptionLifeTimeValue, $amountInUSD, 2);
                     }
 
-                    $tableData[$productName][$key]['Life Time Value'] = bcdiv($lifeTimeValue, 100, 2);
+                    $tableData[$productName][$key]['Life Time Value'] = bcdiv($subscriptionLifeTimeValue, 100, 2);
                 }
 
                 // add one last row to $tableData[$productName] that sums up all the values in endOfMonth columns
-                $tableData[$productName]['Total'] = array_reduce(
-                    $tableData[$productName],
-                    function ($carry, $item) {
-                        foreach ($item as $key => $value) {
-                            if ($key === 'Customer Email' || $key === 'Product Name') {
-                                continue;
+                $totalRevenueRow = $rowTemplate;
+                $totalRevenueRow['Customer Email'] = 'Total';
+                $totalRevenueRow = array_merge(
+                    $totalRevenueRow,
+                    array_reduce(
+                        $tableData[$productName],
+                        function ($carry, $item) {
+                            foreach ($item as $key => $value) {
+                                if ($key === 'Customer Email' || $key === 'Product Name') {
+                                    continue;
+                                }
+
+                                $carry[$key] = bcadd($carry[$key] ?? 0, $value, 2);
                             }
 
-                            $carry[$key] = bcadd($carry[$key] ?? 0, $value, 2);
-                        }
-
-                        return $carry;
-                    },
-                    []
+                            return $carry;
+                        },
+                        []
+                    )
                 );
+
+                $tableData[$productName][] = $totalRevenueRow;
             }
 
             $tableHeaders = [
