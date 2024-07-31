@@ -84,8 +84,8 @@ class GetSubscriptionsReport extends Command
                             default => $invoice['amount_paid'],
                         };
 
-                        $tableData[$productName][$key]["endOfMonth $invoiceIndex"] = bcdiv($amountInUSD, 100, 2);
-                        $lifeTimeValue += $amountInUSD;
+                        $tableData[$productName][$key]["endOfMonth " . $invoiceIndex+1] = bcdiv($amountInUSD, 100, 2);
+                        $lifeTimeValue = bcadd($lifeTimeValue, $amountInUSD, 2);
                     }
 
                     $tableData[$productName][$key]['Life Time Value'] = bcdiv($lifeTimeValue, 100, 2);
@@ -100,7 +100,7 @@ class GetSubscriptionsReport extends Command
                                 continue;
                             }
 
-                            $carry[$key] = ($carry[$key] ?? 0) + $value;
+                            $carry[$key] = bcadd($carry[$key] ?? 0, $value, 2);
                         }
 
                         return $carry;
