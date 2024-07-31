@@ -34,6 +34,7 @@ class GetSubscriptionsReport extends Command
 
             // Stripe normally will not return subscriptions attached to a test clock, so we specify it here
             $subscriptions = $stripeClient->subscriptions->all([
+                'status' => 'all',
                 'test_clock' => config('stripe.test_clock'),
                 'expand' => ['data.customer', 'data.plan.product'],
             ]);
@@ -56,27 +57,38 @@ class GetSubscriptionsReport extends Command
                     $subscriptionId = $subscription['id'];
                     $invoices = $stripeClient->invoices->search([
                         'query' => "subscription:'$subscriptionId'",
+                        'limit' => 100,
                     ]);
+
+                    /*
+                    From the Stripe docs: "The invoices are returned sorted by creation date, with the most recently created
+                    invoices appearing first."
+                    So we need to reverse the order here, with oldest appearing first.
+                    Then truncate to 12 invoices, as this report only needs the next 12 months.
+                    */
+                    $invoices = array_reverse($invoices->toArray()['data']);
+                    $invoices = array_slice($invoices, 0, 12);
+
 
                     $lifeTimeValue = 0;
 
-                    foreach ($invoices as $invoiceNumber => $invoice) {
+                    foreach ($invoices as $invoiceIndex => $invoice) {
                         /*
                         does currency conversion using ExchangeRate class
                         YOM: this amount may not be 100% accurate due to variances in actual market exchange rates
                         used by Stripe vs static rates in ExchangeRate class.
                         */
-                        $amountInUSD = match ($invoice->lines->data[0]->currency) {
-                            'gbp' => $invoice->lines->data[0]->amount * ExchangeRate::$GBP_TO_USD,
-                            'eur' => $invoice->lines->data[0]->amount * ExchangeRate::$EUR_TO_USD,
-                            default => $invoice->lines->data[0]->amount,
+                        $amountInUSD = match ($invoice['currency']) {
+                            'gbp' => bcmul($invoice['amount_paid'], ExchangeRate::$GBP_TO_USD, 2),
+                            'eur' => bcmul($invoice['amount_paid'], ExchangeRate::$GBP_TO_USD, 2),
+                            default => $invoice['amount_paid'],
                         };
 
-                        $tableData[$productName][$key]["endOfMonth $invoiceNumber"] = number_format($amountInUSD / 100, 2);
+                        $tableData[$productName][$key]["endOfMonth $invoiceIndex"] = bcdiv($amountInUSD, 100, 2);
                         $lifeTimeValue += $amountInUSD;
                     }
 
-                    $tableData[$productName][$key]['Life Time Value'] = number_format($lifeTimeValue / 100, 2);
+                    $tableData[$productName][$key]['Life Time Value'] = bcdiv($lifeTimeValue, 100, 2);
                 }
 
                 // add one last row to $tableData[$productName] that sums up all the values in endOfMonth columns
