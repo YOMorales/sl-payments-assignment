@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Util\ExchangeRate;
 use Illuminate\Console\Command;
 use Stripe\StripeClient;
 use Throwable;
@@ -33,8 +34,41 @@ class GetSubscriptionsReport extends Command
             // Stripe normally will not return subscriptions attached to a test clock, so we specify it here
             $subscriptions = $stripeClient->subscriptions->all([
                 'test_clock' => config('stripe.test_clock'),
-                'expand' => ['data.customer', 'data.plan.product']
+                'expand' => ['data.customer', 'data.plan.product'],
             ]);
+
+            // using toArray() to weed out a lot of metadata in the Stripe response
+            $subscriptions = $subscriptions->toArray()['data'];
+            $subscriptionsByProduct = collect($subscriptions)->groupBy('plan.product.name');
+
+            $tableData = [];
+
+            foreach ($subscriptionsByProduct as $productName => $subscriptionGroup) {
+                foreach ($subscriptionGroup as $key => $subscription) {
+                    $tableData[$productName][$key] = [
+                        'Customer Email' => $subscription['customer']['email'],
+                        'Product Name' => $productName,
+                    ];
+
+                    // get invoices for this subscription
+                    $subscriptionId = $subscription['id'];
+                    $invoices = $stripeClient->invoices->search([
+                        'query' => "subscription:'$subscriptionId'",
+                    ]);
+
+                    foreach ($invoices as $invoiceNumber => $invoice) {
+                        // does currency conversion using ExchangeRate class
+                        // YOM: this amount may not be 100% accurate due to variances in actual market exchange rates vs static rates in ExchangeRate class
+                        $amountInUSD = match ($invoice->lines->data[0]->currency) {
+                            'gbp' => $invoice->lines->data[0]->amount * ExchangeRate::$GBP_TO_USD,
+                            'eur' => $invoice->lines->data[0]->amount * ExchangeRate::$EUR_TO_USD,
+                            default => $invoice->lines->data[0]->amount,
+                        };
+
+                        $tableData[$productName][$key]["invoice_$invoiceNumber"] = sprintf("$%s", number_format($amountInUSD / 100, 2));
+                    }
+                }
+            }
 
             $tableHeaders = [
                 'Customer Email',
@@ -55,13 +89,9 @@ class GetSubscriptionsReport extends Command
                 'Life Time Value',
             ];
 
-            $tableData = [
-                ['yomorales@gmail.com', 'Product 1', 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 1000],
-            ];
-
             $this->table(
                 $tableHeaders,
-                $tableData
+                $tableData['Crossclip']
             );
 
             return Command::SUCCESS;
