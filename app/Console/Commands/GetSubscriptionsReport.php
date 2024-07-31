@@ -43,6 +43,7 @@ class GetSubscriptionsReport extends Command
 
             $tableData = [];
 
+            // TODO: keep using collections
             foreach ($subscriptionsByProduct as $productName => $subscriptionGroup) {
                 foreach ($subscriptionGroup as $key => $subscription) {
                     $tableData[$productName][$key] = [
@@ -56,18 +57,43 @@ class GetSubscriptionsReport extends Command
                         'query' => "subscription:'$subscriptionId'",
                     ]);
 
+                    $lifeTimeValue = 0;
+
                     foreach ($invoices as $invoiceNumber => $invoice) {
-                        // does currency conversion using ExchangeRate class
-                        // YOM: this amount may not be 100% accurate due to variances in actual market exchange rates vs static rates in ExchangeRate class
+                        /*
+                        does currency conversion using ExchangeRate class
+                        YOM: this amount may not be 100% accurate due to variances in actual market exchange rates
+                        used by Stripe vs static rates in ExchangeRate class.
+                        */
                         $amountInUSD = match ($invoice->lines->data[0]->currency) {
                             'gbp' => $invoice->lines->data[0]->amount * ExchangeRate::$GBP_TO_USD,
                             'eur' => $invoice->lines->data[0]->amount * ExchangeRate::$EUR_TO_USD,
                             default => $invoice->lines->data[0]->amount,
                         };
 
-                        $tableData[$productName][$key]["invoice_$invoiceNumber"] = sprintf("$%s", number_format($amountInUSD / 100, 2));
+                        $tableData[$productName][$key]["endOfMonth $invoiceNumber"] = number_format($amountInUSD / 100, 2);
+                        $lifeTimeValue += $amountInUSD;
                     }
+
+                    $tableData[$productName][$key]['Life Time Value'] = number_format($lifeTimeValue / 100, 2);
                 }
+
+                // add one last row to $tableData[$productName] that sums up all the values in endOfMonth columns
+                $tableData[$productName]['Total'] = array_reduce(
+                    $tableData[$productName],
+                    function ($carry, $item) {
+                        foreach ($item as $key => $value) {
+                            if ($key === 'Customer Email' || $key === 'Product Name') {
+                                continue;
+                            }
+
+                            $carry[$key] = ($carry[$key] ?? 0) + $value;
+                        }
+
+                        return $carry;
+                    },
+                    []
+                );
             }
 
             $tableHeaders = [
