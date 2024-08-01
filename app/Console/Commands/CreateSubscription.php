@@ -102,7 +102,7 @@ class CreateSubscription extends Command
                         $subscription->id,
                         [
                             'payment_behavior' => 'pending_if_incomplete',
-                            'proration_behavior' => 'always_invoice',
+                            'proration_behavior' => 'create_prorations',
                             'items' => [
                                 [
                                     'id' => $subscription->items->data[0]->id,
