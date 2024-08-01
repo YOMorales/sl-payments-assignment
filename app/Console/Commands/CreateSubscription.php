@@ -64,15 +64,19 @@ class CreateSubscription extends Command
 
             $this->info("Created subscription: {$subscription->id}");
 
-
+            /*
+            YOM: given sufficient time, I could refactor most of the code here to move code to other methods,
+            or to even create helper classes for tasks such as advancing the clock used here. I personally don't
+            like extensive methods with a lot of procedural code.
+            */
             for ($months = 1; $months <= 12; $months++) {
                 $oneMonthIncrement = Carbon::now()->startOfDay()->addMonthsNoOverflow($months);
-                $this->info("Advancing clock to..." . $oneMonthIncrement->format('Y-m-d'));
+                $this->info("Advancing clock to " . $oneMonthIncrement->format('Y-m-d'));
 
                 $clock = $stripeClient->testHelpers->testClocks->advance(config('stripe.test_clock'), ['frozen_time' => $oneMonthIncrement->timestamp]);
                 $clockStatus = $clock->status;
 
-                // YOM: I know there are webhooks for this, but I will be pinging
+                // YOM: I know there are webhooks for this, but I will be pinging to keep this simple
                 while ($clockStatus !== 'ready') {
                     $this->info('Waiting for clock to be ready...');
                     sleep(4);

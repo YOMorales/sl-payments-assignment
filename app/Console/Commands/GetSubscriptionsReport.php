@@ -38,11 +38,16 @@ class GetSubscriptionsReport extends Command
                 'test_clock' => config('stripe.test_clock'),
                 'expand' => ['data.customer', 'data.plan.product'],
             ]);
-
             // using toArray() to weed out a lot of metadata in the Stripe response
             $subscriptions = $subscriptions->toArray()['data'];
             $subscriptionsByProduct = collect($subscriptions)->groupBy('plan.product.name');
 
+            /*
+            YOM: given sufficient time, I could refactor most of the code here to move code to other methods
+            or classes. I personally don't like extensive methods with a lot of procedural code.
+            Also, I started using Laravel collections above but inadvertedly switched back to arrays, so
+            in a refactor, I would keep using Collection methods such as each(), map(), reduce(), etc.
+            */
             $allTablesData = [];
             $rowTemplate = [
                 'Customer Email' => '',
@@ -62,7 +67,6 @@ class GetSubscriptionsReport extends Command
                 'Life Time Value' => null,
             ];
 
-            // TODO: keep using collections
             foreach ($subscriptionsByProduct as $productName => $subscriptionGroup) {
                 foreach ($subscriptionGroup as $key => $subscription) {
                     $allTablesData[$productName][$key] = $rowTemplate;
@@ -73,6 +77,7 @@ class GetSubscriptionsReport extends Command
                     $subscriptionId = $subscription['id'];
                     $invoices = $stripeClient->invoices->search([
                         'query' => "subscription:'$subscriptionId'",
+                        // grabbing 100 invoices to keep this simple and avoid paginating
                         'limit' => 100,
                     ]);
 
@@ -107,7 +112,7 @@ class GetSubscriptionsReport extends Command
                     $allTablesData[$productName][$key]['Life Time Value'] = bcdiv($subscriptionLifeTimeValue, 100, 2);
                 }
 
-                // add one last row to $allTablesData[$productName] that sums up all the values in endOfMonth columns
+                // add one last row to $allTablesData[$productName] that sums up all the values in 'endOfMonth' columns
                 $totalRevenueRow = $rowTemplate;
                 $totalRevenueRow['Customer Email'] = 'Total';
                 $totalRevenueRow = array_merge(
@@ -132,6 +137,7 @@ class GetSubscriptionsReport extends Command
                 $allTablesData[$productName][] = $totalRevenueRow;
             }
 
+            // generate table headers, including those with end of month dates
             $endOfMonthDates = [];
             $currentMonth = Carbon::now();
             for ($i = 0; $i < 12; $i++) {
