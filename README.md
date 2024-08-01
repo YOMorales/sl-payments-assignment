@@ -21,6 +21,7 @@ your new clock's id.
 3. Run the Stripe fixtures by using the following Stripe CLI command: `stripe fixtures ./fixtures/seed.json`
 
 4. Run the command: `php artisan sl:create-subscription`.
+IMPORTANT: I found that Stripe can sometimes take several seconds to update the data generated in their API, so run the next two commands with some seconds in between.
 This command will create a new extra subscription (for price: monthly_crossclip_basic) in addition to the ones added by the fixtures. The command will also advance the test clock made on step #2 in order to upgrade this extra subscription and to generate future test invoices for all subscriptions. So you will need to wait a while for Stripe to progressively advance the clock 12 months.
 
 5. Finally, run `php artisan sl:get-subscriptions-report`.
@@ -31,7 +32,7 @@ This command will crunch all the test invoices data and will generate tables in 
 
 - I have included a txt file called `subscription-report-results.txt` with the results of my exercise (Im including it as txt file and not a screenshot because the results are output in the terminal and they look garbled due to screen size).
 
-- Why commands? For these sort of backend-heavy tasks, I like to use custom commands (though not for all scenarios) because they offer other possibilities such as scheduling them, queueing them, executing them directly when ssh'ing in a server, and more.
+- Why commands? For these sort of backend-heavy tasks (which do not necessarily require output to a browser), I like to use custom commands (though not for all scenarios) because they offer other possibilities such as scheduling them, queueing them, executing them directly when ssh'ing in a server, and more.
 
 - Why separate commands? The exercise had two main goals: to generate a report table and also to create a subscription and upgrade it midway. It was not entirely clear if the two goals were dependent (i.e. whether the report table needed to include the revenue of the extra subscription created/upgraded... or if the revenue table was meant to use only the fixtures' data with a separate test clock). So I decided to create two commands where each one would handle a different goal. However, in the instructions of this README, Im stating that the command `php artisan sl:create-subscription` should be run before the "subscriptions-report" command, because "create-subscription" command is the one that advances the clock 12 months ahead. If it were the case that the two goals were not dependent on each other, then I would have created a separate clock in "subscriptions-report" command and would have advanced it 12 months, independently of the clock in "create-subscription" command.
 
