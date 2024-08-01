@@ -101,7 +101,7 @@ class GetSubscriptionsReport extends Command
                         */
                         $amountInUSD = match ($invoice['currency']) {
                             'gbp' => bcmul($invoice['amount_paid'], ExchangeRate::$GBP_TO_USD, 2),
-                            'eur' => bcmul($invoice['amount_paid'], ExchangeRate::$GBP_TO_USD, 2),
+                            'eur' => bcmul($invoice['amount_paid'], ExchangeRate::$EUR_TO_USD, 2),
                             default => $invoice['amount_paid'],
                         };
 

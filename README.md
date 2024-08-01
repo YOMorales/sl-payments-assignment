@@ -21,7 +21,9 @@ your new clock's id.
 3. Run the Stripe fixtures by using the following Stripe CLI command: `stripe fixtures ./fixtures/seed.json`
 
 4. Run the command: `php artisan sl:create-subscription`.
+
 IMPORTANT: I found that Stripe can sometimes take several seconds to update the data generated in their API, so run the next two commands with some seconds in between.
+
 This command will create a new extra subscription (for price: monthly_crossclip_basic) in addition to the ones added by the fixtures. The command will also advance the test clock made on step #2 in order to upgrade this extra subscription and to generate future test invoices for all subscriptions. So you will need to wait a while for Stripe to progressively advance the clock 12 months.
 
 5. Finally, run `php artisan sl:get-subscriptions-report`.
