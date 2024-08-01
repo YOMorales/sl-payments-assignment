@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Util\ExchangeRate;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Stripe\StripeClient;
 use Throwable;
@@ -131,24 +132,17 @@ class GetSubscriptionsReport extends Command
                 $allTablesData[$productName][] = $totalRevenueRow;
             }
 
-            $tableHeaders = [
-                'Customer Email',
-                'Product Name',
-                // TODO: fill these later with the real end of month dates
-                'endOfMonth 1',
-                'endOfMonth 2',
-                'endOfMonth 3',
-                'endOfMonth 4',
-                'endOfMonth 5',
-                'endOfMonth 6',
-                'endOfMonth 7',
-                'endOfMonth 8',
-                'endOfMonth 9',
-                'endOfMonth 10',
-                'endOfMonth 11',
-                'endOfMonth 12',
-                'Life Time Value',
-            ];
+            $endOfMonthDates = [];
+            $currentMonth = Carbon::now();
+            for ($i = 0; $i < 12; $i++) {
+                $endOfMonthDates[] = $currentMonth->endOfMonth()->format('Y-m-d');
+                $currentMonth->addMonthNoOverflow();
+            }
+            $tableHeaders = array_merge(
+                ['Customer Email', 'Product Name'],
+                $endOfMonthDates,
+                ['Life Time Value']
+            );
 
             foreach ($allTablesData as $tableData) {
                 $this->table(
