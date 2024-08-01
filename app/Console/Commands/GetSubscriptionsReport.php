@@ -124,8 +124,11 @@ class GetSubscriptionsReport extends Command
                                 if ($key === 'Customer Email' || $key === 'Product Name') {
                                     continue;
                                 }
+                                // YOM: somewhat hacky, definitely could use a refactor
                                 $value = str_replace('$', '', $value);
-                                $carry[$key] = '$' . bcadd($carry[$key] ?? 0, $value, 2);
+                                $previousValue = $carry[$key] ?? 0;
+                                $previousValue = str_replace('$', '', $previousValue);
+                                $carry[$key] = '$' . bcadd($previousValue, $value, 2);
                             }
 
                             return $carry;
