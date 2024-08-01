@@ -105,11 +105,11 @@ class GetSubscriptionsReport extends Command
                             default => $invoice['amount_paid'],
                         };
 
-                        $allTablesData[$productName][$key]["endOfMonth " . $invoiceIndex+1] = bcdiv($amountInUSD, 100, 2);
+                        $allTablesData[$productName][$key]["endOfMonth " . $invoiceIndex+1] = '$' . bcdiv($amountInUSD, 100, 2);
                         $subscriptionLifeTimeValue = bcadd($subscriptionLifeTimeValue, $amountInUSD, 2);
                     }
 
-                    $allTablesData[$productName][$key]['Life Time Value'] = bcdiv($subscriptionLifeTimeValue, 100, 2);
+                    $allTablesData[$productName][$key]['Life Time Value'] = '$' . bcdiv($subscriptionLifeTimeValue, 100, 2);
                 }
 
                 // add one last row to $allTablesData[$productName] that sums up all the values in 'endOfMonth' columns
@@ -124,8 +124,8 @@ class GetSubscriptionsReport extends Command
                                 if ($key === 'Customer Email' || $key === 'Product Name') {
                                     continue;
                                 }
-
-                                $carry[$key] = bcadd($carry[$key] ?? 0, $value, 2);
+                                $value = str_replace('$', '', $value);
+                                $carry[$key] = '$' . bcadd($carry[$key] ?? 0, $value, 2);
                             }
 
                             return $carry;
